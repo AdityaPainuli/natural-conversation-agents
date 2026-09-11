@@ -44,6 +44,18 @@ class Preference:
     turn_id: str
 
 
+@dataclass(frozen=True)
+class Reference:
+    """Something from the ledger worth reflecting back this turn.
+
+    Acknowledgment is not a move. It composes with whatever move fires.
+    """
+
+    kind: Literal["preference", "implicit_answer"]
+    text: str
+    turn_id: str
+
+
 @dataclass
 class Commitment:
     """Something the agent promised itself it would come back to."""

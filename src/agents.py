@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 
 from .delivery import cap_length, detect_register, match_register
 from .extraction import extract
-from .ledger import Ledger, Objective, Turn
+from .ledger import Ledger, Objective, Reference, Turn
 from .llm import LLMClient
 from .participant import ScriptedTurn
 from .policy import Decision, Move, next_move
@@ -23,12 +23,16 @@ Ask the next one on the list. Keep it to two sentences."""
 
 SYSTEM_LEDGER = """You are conducting a research interview.
 
-You are given a ledger of what the participant has already covered and the single
-move you have decided to make this turn. Perform that move and nothing else.
+You are given a ledger of what the participant has already covered, anything they
+just volunteered that is worth reflecting, and the single move you have decided to
+make this turn.
 
-Always acknowledge, by name, the specific thing the participant said that you are
-building on. Never re-ask something the ledger marks answered or implicitly_answered.
-Two or three sentences, plain spoken, no interviewer boilerplate."""
+If there is anything to acknowledge, reflect it back first, in your own words and by
+name, and only then perform the move. Acknowledging is not a substitute for the move
+and the move is not a substitute for acknowledging. Do both, in that order.
+
+Never re-ask something the ledger marks answered or implicitly_answered.
+Two to four sentences, plain spoken, no interviewer boilerplate."""
 
 
 @dataclass
@@ -93,7 +97,7 @@ class LedgerAgent:
         tid = f"a{sum(1 for t in self.ledger.history if t.speaker == 'agent') + 1}"
         decision = next_move(self.ledger)
         self.decisions.append(decision)
-        text = match_register(cap_length(self._generate(decision)), self.register)
+        text = match_register(self._generate(decision), self.register)
         self.ledger.record_agent_turn(Turn(id=tid, speaker="agent", text=text))
         asks = decision.objective_id if decision.move in _QUESTION_MOVES else None
         return AgentTurn(tid, text, decision.move.name, asks, decision.reason)
@@ -102,7 +106,10 @@ class LedgerAgent:
     def _generate(self, decision: Decision) -> str:
         if self.client.is_live:
             return self.client.complete_text(SYSTEM_LEDGER, self._live_prompt(decision))
-        return _template(decision, self.ledger, self.objectives)
+        # acknowledgment first, then the move. Same order the live prompt asks for.
+        ack = _render_ack(decision.acknowledge)
+        body = cap_length(_template(decision, self.ledger, self.objectives))
+        return f"{ack} {body}".strip()
 
     def _live_prompt(self, decision: Decision) -> str:
         target = _objective(self.objectives, decision.objective_id)
@@ -112,6 +119,8 @@ class LedgerAgent:
             f"Move: {decision.move.name} ({decision.reason})\n"
             + (f"Objective in play: {target.question}\n" if target else "")
             + (f"Objectives to skip, say so out loud: {', '.join(decision.skipped)}\n" if decision.skipped else "")
+            + (f"Acknowledge first, in your own words: {_render_ack(decision.acknowledge)}\n"
+               if decision.acknowledge else "")
         )
 
 
@@ -138,12 +147,9 @@ def _template(decision: Decision, ledger: Ledger, objectives: list[Objective]) -
 
     if decision.move is Move.ACKNOWLEDGE_AND_DEEPEN:
         pref = ledger.preferences[-1]
-        verb = "clearly can't stand" if pref.polarity == "dislikes" else "clearly like"
-        implied = _join([_objective(objectives, o).label for o in last.implies_objectives])
         return (
-            f"Hold on, two things there. You just told me {implied} without me asking, "
-            f"and you {verb} {pref.topic}. What would have to change about {pref.topic} "
-            f"for it to be worth opening?"
+            f"That's the part I want to sit with. What would have to change about "
+            f"{pref.topic} for it to be worth opening?"
         )
 
     if decision.move is Move.ALLOW_DIGRESSION:
@@ -170,9 +176,20 @@ def _template(decision: Decision, ledger: Ledger, objectives: list[Objective]) -
             "Thanks for the time. I'll stop there."
         )
 
-    if last is None:
-        return target.question
+    if last is None or decision.acknowledge:
+        return target.question  # the acknowledgment already opened the turn
     return f"Makes sense, {last.summary}. {target.question}"
+
+
+def _render_ack(refs: list[Reference]) -> str:
+    """Turn the decision's references into one sentence, rendered before the move."""
+    if not refs:
+        return ""
+    parts = [
+        f"you already told me {r.text}" if r.kind == "implicit_answer" else f"you {r.text}"
+        for r in refs
+    ]
+    return f"Before I move on, {_join(parts)}."
 
 
 def _evidence_summary(ledger: Ledger, oid: str) -> str:

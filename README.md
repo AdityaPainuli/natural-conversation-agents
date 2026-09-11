@@ -35,6 +35,7 @@ Counting rules are below and printed by the harness. Read them before you believ
 python demo/run_demo.py --mode stub                   # side-by-side transcript
 python demo/run_demo.py --mode stub --pause-at-moment # stops at the pause moment
 python demo/harness.py --mode stub                    # writes artifacts/, prints the metrics
+python demo/harness.py --mode live --out artifacts/live   # same, against the real model
 python -m pytest                                      # 20 tests, no network
 ```
 
@@ -50,6 +51,34 @@ pip install -e ".[live]"
 export ANTHROPIC_API_KEY=...
 python demo/run_demo.py --mode live
 ```
+
+## What live mode actually produced
+
+I ran it. 50 calls on `claude-opus-5`, three minutes. The numbers move, and not all of them in my favour:
+
+| | naive | ledger |
+|---|---|---|
+| repeat-question rate | 33.3% (2/6) | 0% (0/2) |
+| implicit-answer capture | 0% (0/2) | 100% (2/2) |
+| acknowledgment rate (LLM-judged) | 70% (7/10) | 90% (9/10) |
+| coverage efficiency | 1.00 (6 questions / 6 objectives) | 0.33 (2 questions / 6 objectives) |
+
+Two things to be honest about.
+
+String matching scored the naive agent at 10% acknowledgment. An LLM judge scores the same
+ten turns at 70%. The old metric was measuring vocabulary overlap, not acknowledgment, and it
+was flattering the ledger agent by about sixty points. That is why live mode judges this one
+with a model. The acknowledgment claim is the weakest of the three.
+
+The ledger agent's repeat denominator collapses live, from 6 to 2. Live extraction is generous
+with preferences, so more turns read as notable, so the agent acknowledges and deepens instead
+of asking. "Zero repeats out of two questions" is a thinner claim than zero out of six, and the
+chart does not show denominators. Coverage efficiency of 0.33 is the same fact in better
+clothes: it covered six objectives on two questions because the participant volunteered the
+rest.
+
+Repeat rate and implicit-answer capture still separate cleanly. Those are the two I would put
+on a slide.
 
 ## The framework
 
@@ -100,7 +129,8 @@ Numbers without counting rules are decoration.
 | --- | --- |
 | Repeat-question rate | An agent turn counts as a repeat if it asks about an objective that the participant had already answered, explicitly or implicitly, in an earlier turn; the denominator is every agent turn that asks about a specific objective. |
 | Implicit-answer capture rate | An implicitly answered objective counts as captured if the agent never asked about it again after the turn that answered it sideways; the denominator is every objective the participant answered without being asked. |
-| Acknowledgment rate | An agent turn counts as an acknowledgment if it repeats back, verbatim, a topic phrase the participant used in an earlier turn; the denominator is every agent turn. |
+| Acknowledgment rate | An agent turn counts as an acknowledgment if it references a fact or preference the participant stated in an earlier turn, judged by verbatim topic-phrase match in stub mode and by an LLM judge in live mode; the denominator is every agent turn. |
+| Coverage efficiency | Questions asked is every agent turn that asks about a specific objective, and objectives covered is every objective the participant answered by the end of the conversation; fewer questions for the same coverage is the point. |
 
 These sentences are printed verbatim by `python demo/harness.py` and stored in
 `artifacts/metrics.json`. No metric value is hardcoded anywhere. They are computed from the
@@ -150,12 +180,14 @@ Slides: _link goes here after the talk._
   is being tested on recovering from its own mistakes.
 - **Stub mode is deterministic by construction.** Both agents render from small move-specific
   templates so the transcript never wobbles on stage. The naive agent's 0% acknowledgment rate
-  is a property of its template: it says "Got it, thanks" and repeats the scripted question
-  verbatim. That is exactly the behaviour being measured, but it is a floor, not a measurement
-  of what a real model would do unprompted.
-- **The ledger agent's acknowledgments come from ledger state, and the metric matches against
-  the same annotated phrases.** In stub mode the acknowledgment rate measures whether the
-  architecture routes prior content into the reply at all. Not how gracefully it does it.
+  in stub mode is a property of its template: it says "Got it, thanks" and repeats the scripted
+  question verbatim. It is a floor, not a measurement. Live mode confirms that: the same agent
+  scores 70% when a real model writes its turns and a real model grades them.
+- **The ledger agent's acknowledgments come from ledger state, and in stub mode the metric
+  matches against the same annotated phrases.** So the stub acknowledgment rate measures whether
+  the architecture routes prior content into the reply at all. Not how gracefully it does it.
+- **The Deaf Interviewer callout is still string-matched, in both modes.** Given how badly string
+  matching did on acknowledgment, treat it as a hint in the transcript, not a measurement.
 - **Live mode changes the hard part.** Extraction becomes a real judgment call and gets things
   wrong, including the implicit-answer detection this whole design leans on. Generation stops
   being stable, so the transcript differs run to run. Acknowledgment is better judged by a

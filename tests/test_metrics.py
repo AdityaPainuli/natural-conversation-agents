@@ -80,3 +80,18 @@ def test_an_agent_turn_before_any_participant_turn_cannot_acknowledge():
         PARTICIPANT,
     )
     assert run.counts["acknowledgment_rate"] == [0, 3]
+
+
+def test_coverage_efficiency_counts_questions_and_covered_objectives():
+    run = run_agent(
+        FakeAgent([
+            AgentTurn("a1", "When do you order?", "ASK", "x"),
+            AgentTurn("a2", "You mentioned pancakes, say more.", "DEEPEN", None),
+            AgentTurn("a3", "Anything else?", "ASK", None),
+        ]),
+        PARTICIPANT,
+    )
+    # one objective question; p1 covered both 'x' (answered) and 'y' (implied)
+    assert run.coverage["questions_asked"] == 1
+    assert run.coverage["objectives_covered"] == 2
+    assert run.coverage["questions_per_objective"] == 0.5

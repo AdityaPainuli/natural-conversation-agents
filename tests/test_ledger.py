@@ -74,3 +74,12 @@ def test_trailing_digression_turns():
     led.update(ex("p2", digression=True, digression_value="valuable"))
     led.update(ex("p3", digression=True, digression_value="valuable"))
     assert led.trailing_digression_turns() == 2
+
+
+def test_pending_references_are_built_from_the_last_turn_only():
+    from src.policy import pending_references
+
+    led = ledger()
+    led.update(ex("p1", preferences=[Preference("dislikes", "morning notifications", "p1")]))
+    led.update(ex("p2", answers_objectives=["a"]))
+    assert pending_references(led) == []  # p2 volunteered nothing
