@@ -47,8 +47,8 @@ EXTRACTION_SCHEMA: dict[str, Any] = {
         "digression": {"type": "boolean"},
         "digression_value": {"type": "string", "enum": ["valuable", "noise"]},
         "ambiguous_objective": {
-            "type": ["string", "null"],
-            "description": "Objective id the turn gestures at without actually answering.",
+            "type": "string",
+            "description": "Objective id the turn gestures at without answering. Omit if there is none.",
         },
     },
     "required": ["answers_objectives", "implies_objectives", "preferences", "topics", "summary", "digression"],
