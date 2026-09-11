@@ -138,7 +138,12 @@ transcript the run produced plus the ground-truth annotations on the participant
 
 ## Artifacts
 
-`python demo/harness.py --mode stub` writes into `artifacts/`:
+Both runs are checked in, so you can read them without cloning: `artifacts/` is the
+deterministic stub run, `artifacts/live/` is the real one against `claude-opus-5`.
+`python demo/harness.py --mode stub` regenerates the first, and
+`python demo/harness.py --mode live --out artifacts/live` the second.
+
+Each directory holds:
 
 - `transcript_naive.md`, `transcript_ledger.md`, full runs with failure-mode callouts inline.
   `GOLDFISH` when the agent re-asks something already covered. `DEAF INTERVIEWER` when it

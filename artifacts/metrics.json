@@ -1,0 +1,62 @@
+{
+  "counting_rules": {
+    "repeat_question_rate": "An agent turn counts as a repeat if it asks about an objective that the participant had already answered, explicitly or implicitly, in an earlier turn; the denominator is every agent turn that asks about a specific objective.",
+    "implicit_answer_capture_rate": "An implicitly answered objective counts as captured if the agent never asked about it again after the turn that answered it sideways; the denominator is every objective the participant answered without being asked.",
+    "acknowledgment_rate": "An agent turn counts as an acknowledgment if it references a fact or preference the participant stated in an earlier turn, judged by verbatim topic-phrase match in stub mode and by an LLM judge in live mode; the denominator is every agent turn.",
+    "coverage_efficiency": "Questions asked is every agent turn that asks about a specific objective, and objectives covered is every objective the participant answered by the end of the conversation; fewer questions for the same coverage is the point."
+  },
+  "runs": {
+    "naive": {
+      "metrics": {
+        "repeat_question_rate": 0.3333,
+        "implicit_answer_capture_rate": 0.0,
+        "acknowledgment_rate": 0.0
+      },
+      "counts": {
+        "repeat_question_rate": {
+          "numerator": 2,
+          "denominator": 6
+        },
+        "implicit_answer_capture_rate": {
+          "numerator": 0,
+          "denominator": 2
+        },
+        "acknowledgment_rate": {
+          "numerator": 0,
+          "denominator": 10
+        }
+      },
+      "coverage": {
+        "questions_asked": 6,
+        "objectives_covered": 6,
+        "questions_per_objective": 1.0
+      }
+    },
+    "ledger": {
+      "metrics": {
+        "repeat_question_rate": 0.0,
+        "implicit_answer_capture_rate": 1.0,
+        "acknowledgment_rate": 0.8
+      },
+      "counts": {
+        "repeat_question_rate": {
+          "numerator": 0,
+          "denominator": 6
+        },
+        "implicit_answer_capture_rate": {
+          "numerator": 2,
+          "denominator": 2
+        },
+        "acknowledgment_rate": {
+          "numerator": 8,
+          "denominator": 10
+        }
+      },
+      "coverage": {
+        "questions_asked": 6,
+        "objectives_covered": 6,
+        "questions_per_objective": 1.0
+      }
+    }
+  }
+}
